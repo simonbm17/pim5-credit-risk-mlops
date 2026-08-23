@@ -125,7 +125,18 @@ def ingenieria_caracteristicas(ruta="Base_de_datos.xlsx"):
 
     return df
 
-
+def procesar_dataframe(df):
+    """
+    Aplica la ingenieria de caracteristicas a un DataFrame ya cargado
+    en memoria, sin leer el archivo Excel. Se usa en el despliegue,
+    donde los datos llegan directamente en la peticion a la API.
+    """
+    df = validar_valores(df)
+    df = corregir_tipos(df)
+    df = crear_variables_derivadas(df)
+    df = transformar_variables(df)
+    return df
+    
 if __name__ == "__main__":
     datos = ingenieria_caracteristicas()
     print("\nPrimeras filas del dataset procesado:")

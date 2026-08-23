@@ -6,8 +6,9 @@
 #              Construye el pipeline de preprocesamiento con
 #              ColumnTransformer, entrena varios modelos, los evalua
 #              con metricas enfocadas en la clase minoritaria (los
-#              clientes que no pagan a tiempo) y selecciona el de
-#              mejor desempenio.
+#              clientes que no pagan a tiempo), selecciona el de
+#              mejor desempenio y guarda el modelo final para su
+#              posterior despliegue en la API.
 # Autor: Simon Bedoya
 # Carrera: Data Science - Soy Henry
 # =============================================================
@@ -16,6 +17,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import joblib
 
 from sklearn.model_selection import train_test_split
 from sklearn.compose import ColumnTransformer
@@ -58,6 +60,9 @@ COLUMNAS_ORDINALES = ['tendencia_ingresos']
 
 # Orden de las categorias para la variable ordinal
 ORDEN_TENDENCIA = [['Sin_dato', 'Decreciente', 'Estable', 'Creciente']]
+
+# Ruta donde se guarda el modelo final entrenado
+RUTA_MODELO = "modelo_riesgo_credito.joblib"
 
 
 # =============================================================
@@ -151,7 +156,8 @@ def mostrar_matriz_confusion(y_true, y_pred, nombre):
 def entrenar_y_evaluar():
     """
     Ejecuta el flujo completo: carga de datos, division train/test,
-    entrenamiento de varios modelos, evaluacion y seleccion del mejor.
+    entrenamiento de varios modelos, evaluacion, seleccion del mejor
+    y guardado del modelo final para su despliegue.
     """
     # Se cargan los datos con la ingenieria de caracteristicas aplicada
     df = ingenieria_caracteristicas()
@@ -209,6 +215,13 @@ def entrenar_y_evaluar():
     # metrica que equilibra la deteccion de malos pagadores y las falsas alarmas
     mejor_modelo = tabla_resultados['F1_clase0'].idxmax()
     print(f"\nMejor modelo segun F1 de la clase minoritaria: {mejor_modelo}")
+
+    # Se reentrena el mejor modelo con todo el conjunto de entrenamiento
+    # y se guarda en disco para su posterior despliegue en la API
+    modelo_final = build_model(modelos[mejor_modelo])
+    modelo_final.fit(X_train, y_train)
+    joblib.dump(modelo_final, RUTA_MODELO)
+    print(f"Modelo final ({mejor_modelo}) guardado en: {RUTA_MODELO}")
 
     # Se generan los graficos comparativos
     graficar_comparacion(tabla_resultados)
