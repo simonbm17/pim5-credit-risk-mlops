@@ -1,0 +1,21 @@
+# Entorno virtual
+venv/
+
+# Archivos de Python
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Git
+.git/
+.gitignore
+
+# Graficos generados
+*.png
+
+# Sistema
+.DS_Store
+Thumbs.db

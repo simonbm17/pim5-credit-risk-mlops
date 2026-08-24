@@ -1,6 +1,6 @@
 # Modelo de Riesgo Crediticio con Enfoque MLOps
 
-Sistema de predicción del comportamiento de pago de clientes de crédito, desarrollado con un enfoque completo de MLOps que abarca el análisis exploratorio de datos, la ingeniería de características, el modelamiento supervisado, el monitoreo del modelo en producción y su despliegue mediante una API.
+Sistema de predicción del comportamiento de pago de clientes de crédito, desarrollado con un enfoque completo de MLOps que abarca el análisis exploratorio de datos, la ingeniería de características, el modelamiento supervisado, el monitoreo del modelo en producción y su despliegue mediante una API contenerizada con Docker.
 
 ## Caso de negocio
 
@@ -28,9 +28,12 @@ La primera evaluación de los modelos arrojó un recall del 100%, un resultado s
     │   ├── model_training_evaluation.py    # Entrenamiento y evaluación de modelos
     │   ├── model_monitoring.py             # Monitoreo y detección de data drift
     │   ├── app_monitoring.py               # Aplicación Streamlit de monitoreo
-    │   └── model_deploy.py                 # Despliegue del modelo (API)
+    │   └── model_deploy.py                 # Despliegue del modelo mediante API
     ├── Base_de_datos.xlsx                  # Dataset del proyecto
+    ├── modelo_riesgo_credito.joblib        # Modelo entrenado y serializado
     ├── requirements.txt                    # Dependencias del proyecto
+    ├── Dockerfile                          # Definición de la imagen Docker
+    ├── .dockerignore                       # Exclusiones para la imagen
     ├── comparacion_modelos.png             # Gráfico comparativo de modelos
     ├── curvas_roc.png                      # Curvas ROC de los modelos
     └── readme.md                           # Documentación del proyecto
@@ -94,12 +97,52 @@ Un aspecto metodológico importante define el criterio de alerta. La prueba de K
 
 El sistema incluye una aplicación en Streamlit que presenta un semáforo de alertas según el nivel de riesgo, la tabla de métricas por variable, la comparación visual entre distribuciones históricas y actuales, el análisis de la evolución del drift a lo largo de subperiodos y recomendaciones automáticas que sugieren revisar variables o reentrenar el modelo según la gravedad detectada.
 
+### 6. Despliegue mediante API y Docker
+
+El modelo se dispuso como un servicio web mediante una API construida con FastAPI. El módulo model_deploy.py carga el modelo entrenado, expone un endpoint /predict que recibe los datos crudos de uno o varios clientes, les aplica la misma ingeniería de características usada en el entrenamiento y retorna las predicciones. El servicio soporta predicción por lotes, lo que permite evaluar múltiples clientes en una sola solicitud.
+
+La API recibe los datos en su forma cruda, tal como llegarían de un sistema real, y se encarga internamente de todo el preprocesamiento. Esto simplifica su uso, ya que quien la consume no necesita conocer las transformaciones internas del modelo.
+
+Para garantizar la portabilidad del servicio, todo el proyecto se empaquetó en una imagen Docker. La imagen contiene el código fuente, el modelo entrenado, las dependencias y el servidor de aplicación Uvicorn. Esto permite ejecutar el servicio en cualquier entorno de forma idéntica, sin depender de la configuración local de la máquina.
+
+Ejemplo de solicitud al endpoint /predict:
+
+    {
+      "clientes": [
+        {
+          "tipo_credito": 4, "fecha_prestamo": "2025-04-22",
+          "capital_prestado": 840000, "plazo_meses": 6, "edad_cliente": 35,
+          "tipo_laboral": "Empleado", "salario_cliente": 3000000,
+          "total_otros_prestamos": 500000, "cuota_pactada": 150000,
+          "puntaje": 95.2, "puntaje_datacredito": 780,
+          "cant_creditosvigentes": 3, "huella_consulta": 4, "saldo_mora": 0,
+          "saldo_total": 20000, "saldo_principal": 15000,
+          "saldo_mora_codeudor": 0, "creditos_sectorFinanciero": 2,
+          "creditos_sectorCooperativo": 1, "creditos_sectorReal": 0,
+          "promedio_ingresos_datacredito": 900000,
+          "tendencia_ingresos": "Creciente"
+        }
+      ]
+    }
+
+Respuesta de la API:
+
+    {
+      "predicciones": [
+        {
+          "cliente": 1,
+          "prediccion": 1,
+          "resultado": "Paga a tiempo",
+          "probabilidad_pago": 0.99
+        }
+      ]
+    }
+
 ## Cómo ejecutar el proyecto
 
 1. Clonar el repositorio:
 
    git clone https://github.com/simonbm17/pim5-credit-risk-mlops.git
-
    cd pim5-credit-risk-mlops
 
 2. Crear y activar un entorno virtual:
@@ -123,6 +166,23 @@ El sistema incluye una aplicación en Streamlit que presenta un semáforo de ale
 
    streamlit run src\app_monitoring.py
 
+7. Levantar la API de predicción de forma local. Una vez activa, la documentación interactiva queda disponible en http://localhost:8000/docs
+
+   cd src
+   uvicorn model_deploy:app --reload
+
+## Despliegue con Docker
+
+1. Construir la imagen desde la raíz del proyecto:
+
+   docker build -t api-riesgo-credito .
+
+2. Ejecutar el contenedor, exponiendo el puerto 8000:
+
+   docker run -p 8000:8000 api-riesgo-credito
+
+3. Acceder a la API en el navegador a través de http://localhost:8000/docs
+
 ## Versionamiento
 
 El proyecto sigue un flujo de trabajo con tres ramas: developer para el desarrollo activo, certification como entorno de validación y main para las versiones estables. El versionamiento semántico registra la evolución del proyecto:
@@ -131,6 +191,8 @@ El proyecto sigue un flujo de trabajo con tres ramas: developer para el desarrol
 - v1.0.1: carga de datos y análisis exploratorio.
 - v1.1.0: ingeniería de características y modelamiento, integrada a través de la rama de certificación.
 - v1.2.0: monitoreo de data drift y aplicación de visualización.
+- v1.2.1: documentación del proyecto.
+- v1.3.0: despliegue del modelo mediante API y contenedor Docker.
 
 ## Autor
 
